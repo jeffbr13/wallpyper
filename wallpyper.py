@@ -94,16 +94,12 @@ def find_reddit_url():
     except requests.exceptions.ConnectionError as e:
         raise e
 
-    index_html = index_request.text
-    index_soup = etree.HTML(index_html)
-    index_thumbnails = index_soup.xpath("//a[contains(@class, 'thumbnail')]")
-
     valid_href = re.compile('^http://i.imgur.com')
-    valid_urls = []
 
-    for thumb in index_thumbnails:
-        if valid_href.match(thumb.get('href')):
-            valid_urls.append(thumb.get('href'))
+    index_tree = etree.HTML(index_request.text)
+    thumbnail_elements = index_tree.xpath("//a[contains(@class, 'thumbnail')]")
+    valid_urls = [a.get('href') for a in thumbnail_elements
+                                        if valid_href.match(a.get('href'))]
 
     return random.choice(valid_urls)
 
