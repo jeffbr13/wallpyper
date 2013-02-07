@@ -14,7 +14,7 @@ import subprocess
 
 def main(args):
     """
-    Update your GNOME desktop background from some online location.
+    Update your GNOME desktop background from an online source.
 
     By default this is the top upvoted image on
     <reddit.com/r/wallpaper+wallpapers>.
