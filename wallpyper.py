@@ -3,7 +3,7 @@
 
 import argparse
 import errno
-from bs4 import BeautifulSoup
+from lxml import etree
 import requests
 import os
 import os.path as path
@@ -95,15 +95,15 @@ def find_reddit_url():
         raise e
 
     index_html = index_request.text
-    index_soup = BeautifulSoup(index_html)
-    index_thumbnails = index_soup.find_all('a', class_='thumbnail')
+    index_soup = etree.HTML(index_html)
+    index_thumbnails = index_soup.xpath("//a[contains(@class, 'thumbnail')]")
 
     valid_href = re.compile('^http://i.imgur.com')
     valid_urls = []
 
     for thumb in index_thumbnails:
-        if valid_href.match(thumb['href']):
-            valid_urls.append(thumb['href'])
+        if valid_href.match(thumb.get('href')):
+            valid_urls.append(thumb.get('href'))
 
     return random.choice(valid_urls)
 
