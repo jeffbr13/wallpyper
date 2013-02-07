@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 import errno
 from bs4 import BeautifulSoup
 import requests
@@ -11,7 +12,7 @@ import re
 import subprocess
 
 
-def main():
+def main(args):
     """
     Update your GNOME desktop background from some online location.
 
@@ -21,24 +22,42 @@ def main():
     install_location = path.expanduser('~/.config/wallpyper/')
     image_location = path.join(install_location, 'image')
 
-    image_url = find_reddit_image()
+    if args.colourlovers:
+        image_url = find_colourlovers_url()
+        picture_options = 'wallpaper'
+    else:
+        image_url = find_reddit_url()
+        picture_options = 'zoom'
+
     image_data = download_image(image_url)
     save_image(image_location, image_data)
-    set_wallpaper(image_location)
+    set_wallpaper(image_location, picture_options)
     return
 
 
-def set_wallpaper(image_location):
+def set_wallpaper(image_location, picture_options='zoom'):
     """
     Given the expanded path to the image on disk, sets it as the current
     desktop background (on GNOME desktops at least).
+
+    The picture_options string can be one of "none", "wallpaper", "centered",
+    "scaled", "stretched", "zoom", or "spanned".
+    The most useful are "zoom" and "wallpaper" for images or tiles,
+    respectively.
     """
 
+    picture_uri = 'file://' + path.abspath(path.expanduser(image_location))
+
     # if GNOME...
-    if subprocess.call(['gsettings', 'set', 'org.gnome.desktop.background',
-            'picture-uri', "file://" + path.abspath(image_location)]) != 0:
-        print "Could not set desktop background to " + path.abspath(image_location)
+    try:
+        subprocess.call(['gsettings', 'set', 'org.gnome.desktop.background',
+            'picture-uri', picture_uri])
+        subprocess.call(['gsettings', 'set', 'org.gnome.desktop.background',
+                'picture-options', picture_options])
+    except:
+        print "Could not set desktop background to " + picture_uri
         print "Changing the background currently only works with GNOME/gsettings."
+        raise
 
     print 'Desktop background changed!'
     return
@@ -64,9 +83,9 @@ def save_image(image_location, image_data):
         f.close()
 
 
-def find_reddit_image():
+def find_reddit_url():
     """
-    Finhd the URL of one of this week's top Reddit wallpapers.
+    Find the URL of one of this week's top Reddit wallpapers.
     """
     print 'Scraping /r/wallpaper+wallpapers...'
 
@@ -86,7 +105,22 @@ def find_reddit_image():
         if valid_href.match(thumb['href']):
             valid_urls.append(thumb['href'])
 
-    return random.sample(valid_urls, 1)[0]
+    return random.choice(valid_urls)
+
+
+def find_colourlovers_url():
+    """
+    Get the URL of a top COLOURlovers pattern.
+    """
+    print 'Accessing the COLOURlovers pattern API...'
+
+    try:
+        payload = {'format': 'json'}
+        pattern_request = requests.get('http://www.colourlovers.com/api/patterns/top', params=payload)
+    except requests.exceptions.ConnectionError as e:
+        raise e
+
+    return random.choice(pattern_request.json)[u'imageUrl']
 
 
 def download_image(image_href):
@@ -99,4 +133,13 @@ def download_image(image_href):
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='Python script to update your GNOME desktop background from an online source.')
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-r', '--reddit', help='Fetch wallpaper image from /r/wallpaper(s)', action="store_true")
+    group.add_argument('-c', '--colourlovers', help='Fetch wallpaper pattern from http://www.colourlovers.com', action="store_true")
+
+    args = parser.parse_args()
+
+    main(args)
