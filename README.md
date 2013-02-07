@@ -15,7 +15,7 @@ top-upvoted images from [/r/wallpaper(s)](http://www.reddit.com/r/wallpaper+wall
 you'll get a pattern from [COLOURlovers](http://www.colourlovers.com) to jazz
 up your GNOME desktop!
 
-If you need some help, just <strike>whistle</strike> use the `help` flag:
+If you need some help, just <s>whistle</s> use the `help` flag:
 
     python wallpyper.py --help
 
