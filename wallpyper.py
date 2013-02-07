@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from bs4 import BeautifulSoup
 import errno
 from lxml import etree
 import requests
@@ -10,6 +11,7 @@ import os.path as path
 import random
 import re
 import subprocess
+import timeit
 
 
 def main(args):
@@ -19,6 +21,11 @@ def main(args):
     By default this is the top upvoted image on
     <reddit.com/r/wallpaper+wallpapers>.
     """
+
+    if args.parse_test:
+        test_reddit_scraping()
+        return
+
     install_location = path.expanduser('~/.config/wallpyper/')
     image_location = path.join(install_location, 'image')
 
@@ -94,6 +101,10 @@ def find_reddit_url():
     except requests.exceptions.ConnectionError as e:
         raise e
 
+    return parse_reddit_lxml(index_request)
+
+
+def parse_reddit_lxml(index_request):
     valid_href = re.compile('^http://i.imgur.com')
 
     index_tree = etree.HTML(index_request.text)
@@ -102,6 +113,25 @@ def find_reddit_url():
                                         if valid_href.match(a.get('href'))]
 
     return random.choice(valid_urls)
+
+
+def parse_reddit_beautifulsoup(index_request):
+    valid_href = re.compile('^http://i.imgur.com')
+
+    index_soup = BeautifulSoup(index_request.text)
+    index_thumbnails = index_soup.find_all('a', class_='thumbnail')
+    valid_urls = [a['href'] for a in index_thumbnails if valid_href.match(a['href'])]
+
+    return random.choice(valid_urls)
+
+
+def test_reddit_scraping():
+    """
+    Parse and choose a link from a Reddit page 100 times using lxml
+    and BeautifulSoup. See the difference in speed!
+    """
+    print 'Time with BeautifulSoup: ' + str(timeit.timeit("wallpyper.parse_reddit_beautifulsoup(r)", setup="import wallpyper; import requests; r=requests.get('http://www.reddit.com/r/wallpaper+wallpapers/top/?sort=top&t=week')", number=100))
+    print 'Time with lxml: ' + str(timeit.timeit("wallpyper.parse_reddit_lxml(r)", setup="import wallpyper; import requests; r=requests.get('http://www.reddit.com/r/wallpaper+wallpapers/top/?sort=top&t=week')", number=100))
 
 
 def find_colourlovers_url():
@@ -130,12 +160,20 @@ def download_image(image_href):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Python script to update your GNOME desktop background from an online source.')
+    parser = argparse.ArgumentParser(
+        description='Python script to update your GNOME desktop background from an online source.')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('-r', '--reddit', help='Fetch wallpaper image from /r/wallpaper(s)', action="store_true")
-    group.add_argument('-c', '--colourlovers', help='Fetch wallpaper pattern from http://www.colourlovers.com', action="store_true")
+    group.add_argument('-r', '--reddit',
+        help='Fetch wallpaper image from /r/wallpaper(s)',
+        action="store_true")
+    group.add_argument('-c', '--colourlovers',
+        help='Fetch wallpaper pattern from http://www.colourlovers.com',
+        action="store_true")
 
+    parser.add_argument('-p', '--parse-test',
+        help='Parse and choose a link from a Reddit page 100 times using lxml and BeautifulSoup. See the difference in speed!',
+        action='store_true')
     args = parser.parse_args()
 
     main(args)
